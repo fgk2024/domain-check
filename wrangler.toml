@@ -1,6 +1,6 @@
 name = "domain-check"
 main = "src/index.js"
-compatibility_date = "2025-11-18"
+compatibility_date = "2025-11-17"
 keep_vars = true
 
 # KV 命名空间绑定 (必须)
