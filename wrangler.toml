@@ -3,11 +3,9 @@ main = "src/index.js"
 compatibility_date = "2025-11-17"
 keep_vars = true
 
-# KV 命名空间绑定 (必须)
 [[kv_namespaces]]
 binding = "DOMAIN_KV" 
 id = "5217e815e649440c850e75d23e85ddf4" # 替换成你实际的 KV ID
 
-# Cron Triggers 定时任务
 [triggers]
 crons = ["0 2,14 * * *"] # 北京时间 9:00 和 21:00

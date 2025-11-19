@@ -7,7 +7,7 @@ export function getConfig(env) {
         siteIcon: env.ICON || 'https://pan.811520.xyz/icon/domain-check.png',
         bgimgURL: env.BGIMG || 'https://pan.811520.xyz/icon/bg_light.webp',
         githubURL: env.GITHUB_URL || 'https://github.com/yutian81/domain-check',
-        blogURL: env.BLOG_URL || 'https://blog.811520.xyz/post/2025/04/domain-autocheck/',
+        blogURL: env.BLOG_URL || 'https://blog.notett.com/post/2025/11/251118-domain-check/',
         blogName: env.BLOG_NAME || 'QingYun Blog',
         password: env.PASSWORD || "123123",
         days: Number(env.DAYS || 30), // 用于前端即将到期判断
@@ -18,7 +18,7 @@ export function getConfig(env) {
     };
 }
 
-// 格式化日期为 YYYY-MM-DD
+// 格式化日期为北京时间 YYYY-MM-DD
 export function formatDateToBeijing(dateStr) {
     const date = new Date(dateStr);
     const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
@@ -62,13 +62,13 @@ export async function fetchDomainFromAPI(env, domainName) {
             return null;
         }
         
-        // --- 成功响应处理 ---
         const data = await response.json();
         if (!data.creationDate || !data.expiryDate) {
              console.error("WHOIS API返回数据缺少 creationDate 或 expiryDate 字段。");
              return null;
         }
 
+        // 成功并返回数据
         return {
             domain: domainName,
             registrationDate: formatDateToBeijing(data.creationDate),

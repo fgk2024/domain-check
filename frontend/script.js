@@ -9,10 +9,7 @@ let currentPage = 1;
 let currentGroup = '全部';
 let currentSearchTerm = '';
 let currentStatusFilter = '全部';
-let globalConfig = {
-    bgimgURL: 'https://pan.811520.xyz/icon/bg_light.webp', // 默认值，以防API失败
-    daysThreshold: 30 // 默认值
-};
+let globalConfig = { daysThreshold: 30 }; // 默认30天
 
 // 格式化日期为 YYYY-MM-DD
 function formatDate(date) {
@@ -23,6 +20,12 @@ function formatDate(date) {
     return [year, month, day].join('-');
 }
 
+// 简单的域名格式验证
+function isValidDomainFormat(domain) {
+    const domainRegex = /^(?!-)(?!.*--)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$/;
+    return domainRegex.test(domain.toLowerCase());
+}
+
 // 判断是一级域名还是二级域名
 function getDomainLevel(domain) {
     const parts = domain.split('.');
@@ -31,83 +34,6 @@ function getDomainLevel(domain) {
 }
 function isPrimaryDomain(domain) {
     return getDomainLevel(domain) === '一级域名';
-}
-
-// 动态切换表单必填项的提示
-function updateFormRequiredStatus(domainValue) {
-    // 检查返回值是否为 '一级域名' 来进行布尔判断
-    const isPrimary = isPrimaryDomain(domainValue);
-    const requiredFields = ['registrationDate', 'expirationDate', 'system', 'systemURL'];
-    const warningEl = document.getElementById('domainFillWarning');
-    
-    if (isPrimary) {
-        // 一级域名：提示 WHOIS 自动填充
-        if (warningEl) {
-            warningEl.textContent = '若为一级域名，可不填写注册信息，将使用 WHOIS API 自动获取';
-            warningEl.style.color = '#f39c12';
-        }
-        
-        requiredFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.required = false; // 允许为空
-                el.placeholder = '一级域名可留空；二级域名必填';
-            }
-        });
-    } else {
-        // 二级域名：所有字段必填
-        if (warningEl) {
-            warningEl.textContent = '检测为二级域名，注册信息为必填项';
-            warningEl.style.color = '#e74c3c';
-        }
-        
-        requiredFields.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.required = true;
-                el.placeholder = '必填';
-            }
-        });
-    }
-}
-
-// 设置网站图标
-function setFavicon(iconUrl) {
-    if (!iconUrl) {
-        console.warn("未提供网站图标 URL，跳过设置 favicon。");
-        return;
-    }
-
-    let faviconLink = document.getElementById('faviconLink');
-    if (!faviconLink) {
-        // 如果没有找到带 ID 的 link 标签，就创建一个
-        faviconLink = document.createElement('link');
-        faviconLink.id = 'faviconLink';
-        faviconLink.rel = 'icon';
-        faviconLink.type = 'image/png';
-        document.head.appendChild(faviconLink);
-    }
-    faviconLink.href = iconUrl;
-}
-
-// 渲染页脚
-function renderFooter() {
-    const footerEl = document.getElementById('footer');
-    if (!footerEl) return;
-    
-    const { githubURL, blogURL, blogName } = globalConfig;
-    const currentYear = new Date().getFullYear();
-    footerEl.innerHTML = \`
-        <div class="footer">
-            <p>
-                <span>Copyright © \${currentYear} Yutian81</span><span>|</span>
-                <a href="\${githubURL}" target="_blank">
-                    <i class="fab fa-github"></i> Github</a><span>|</span>
-                <a href="$\{blogURL}" target="_blank">
-                    <i class="fas fa-blog"></i> \${blogName}</a>
-            </p>
-        </div>
-    \`;
 }
 
 // 异步获取全局配置
@@ -123,23 +49,6 @@ async function fetchConfig() {
                 ...config,
                 daysThreshold: config.days || globalConfig.daysThreshold // 使用后端定义的提醒天数
             };
-            
-            // 应用背景图
-            if (globalConfig.bgimgURL) {
-                document.body.style.backgroundImage = \`url('\${globalConfig.bgimgURL}')\`;
-                document.body.style.backgroundSize = 'cover';
-                document.body.style.backgroundAttachment = 'fixed';
-            }
-            
-            // 更新浏览器标题
-            document.title = config.siteName || document.title;
-            // 更新网页标题
-            const siteTitleEl = document.getElementById('siteTitle');
-            if (siteTitleEl && config.siteName) {
-                siteTitleEl.innerHTML = \`<i class="fas fa-clock"></i> \${config.siteName}\`;
-            }
-            // 设置网站图标
-            if (globalConfig.siteIcon) { setFavicon(globalConfig.siteIcon); }
         }
     } catch (error) {
         console.error('获取配置信息失败:', error);
@@ -650,10 +559,14 @@ async function fetchDomains() {
 async function submitDomainForm(e) {
     e.preventDefault();
     const modal = document.getElementById('domainFormModal');
-    
     const domainValue = document.getElementById('domain').value.trim();
-    const isPrimary = isPrimaryDomain(domainValue);
+    // 验证域名格式
+    if (!isValidDomainFormat(domainValue)) {
+        alert('请输入有效的域名格式，例如: example.com 或 sub.example.com');
+        return;
+    }
     
+    const isPrimary = isPrimaryDomain(domainValue);
     let newDomainData = {
         // 使用一个唯一标识，确保编辑时提交的还是同一个域名
         originalDomain: document.getElementById('editOriginalDomain').value || domainValue,
@@ -750,8 +663,13 @@ function openDomainForm(domainInfo = null) {
     const modal = document.getElementById('domainFormModal');
     const form = document.getElementById('domainForm');
     const title = modal.querySelector('h2');
-    
+    const warningEl = document.getElementById('domainFillWarning');
     form.reset();
+
+    // 打开模态框时隐藏域名级别提示
+    if (warningEl) {
+        warningEl.style.display = 'none';
+    }
     
     if (domainInfo) {
         title.textContent = '编辑域名';
@@ -771,18 +689,73 @@ function openDomainForm(domainInfo = null) {
     }
     
     // 调用状态更新函数，根据当前域名值显示提示和必填项
-    updateFormRequiredStatus(document.getElementById('domain').value);
-    
+    updateFormRequiredStatus(document.getElementById('domain').value); 
     modal.style.display = 'block';
 }
 
+// 动态切换表单必填项的提示
+function updateFormRequiredStatus(domainValue) {
+    // 检查返回值是否为 '一级域名' 来进行布尔判断
+    const isPrimary = isPrimaryDomain(domainValue);
+    const requiredFields = ['registrationDate', 'expirationDate', 'system', 'systemURL'];
+    const warningEl = document.getElementById('domainFillWarning');
+
+    // 判断是否显示域名级别提示
+    if (!domainValue || domainValue.trim() === '') {
+        if (warningEl) {
+            warningEl.style.display = 'none';
+        }
+        // 域名为空时，保留原始的 required 属性，以确保二级域名验证正常
+        requiredFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.required = true; // 默认为必填，直到判断为一级域名
+                el.placeholder = '必填';
+            }
+        });
+        return;
+    } else {
+        // 域名不为空时，显示提示
+        if (warningEl) {
+            warningEl.style.display = 'block';
+        }
+    }
+    
+    if (isPrimary) {
+        // 一级域名：提示 WHOIS 自动填充
+        if (warningEl) {
+            warningEl.textContent = '检测为一级域名，可不填写日期和注册商，将使用 WHOIS API 自动获取';
+            warningEl.style.color = '#f39c12';
+        }
+        
+        requiredFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.required = false;
+                el.placeholder = '一级域名可留空';
+            }
+        });
+    } else {
+        // 二级域名：所有字段必填
+        if (warningEl) {
+            warningEl.textContent = '检测为二级域名，日期和注册商为必填项, 无法使用 WHOIS API 自动获取';
+            warningEl.style.color = '#e74c3c';
+        }
+        
+        requiredFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.required = true;
+                el.placeholder = '二级域名必填';
+            }
+        });
+    }
+}
 
 // --- 事件监听和初始化 ---
-
 window.onload = async () => {
     await fetchConfig();  // 加载全局配置
-    renderFooter();       // 渲染页脚
-    
+
     // 监听搜索框输入
     document.getElementById('searchBox').addEventListener('input', (e) => {
         currentSearchTerm = e.target.value.trim();
